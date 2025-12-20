@@ -1,31 +1,3 @@
-  // const express = require('express');
-  // const app = express();
-  // app.use(express.json());
-
-  // let products = [
-  //   { id: 1, name: "Kipas Angin Portabel", price: 150000 },
-  //   { id: 2, name: "Blender Mini", price: 200000 }
-  // ];
-
-  // // GET all products
-  // app.get('/products', (req, res) => {
-  //   res.json(products);
-  // });
-
-  // // GET product by ID
-  // app.get('/products/:id', (req, res) => {
-  //   const id = parseInt(req.params.id);
-  //   const product = products.find(p => p.id === id);
-
-  //   if (!product) {
-  //     return res.status(404).json({ error: "Product not found" });
-  //   }
-
-  //   res.json(product);
-  // });
-
-  // app.listen(8001, () => console.log("Product-service running on port 8001"));
-
 const express = require('express');
 const { DataTypes } = require('sequelize');
 const sequelize = require('./database');
@@ -33,7 +5,9 @@ const sequelize = require('./database');
 const app = express();
 const PORT = 3000;
 
-// Middleware
+// ======================
+// MIDDLEWARE
+// ======================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,65 +37,100 @@ const Product = sequelize.define('Product', {
   description: {
     type: DataTypes.TEXT
   }
+}, {
+  tableName: 'products',
+  freezeTableName: true,
+  timestamps: false
 });
 
-/**
- * ======================
- * DATABASE SYNC
- * ======================
- */
-sequelize.sync()
-  .then(() => console.log('Database synced'))
-  .catch(err => console.error('Sync error:', err));
 
-/**
- * ======================
- * ROUTES CRUD PRODUCT
- * ======================
- */
+// ======================
+// DATABASE SYNC
+// ======================
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connected');
 
-// CREATE
+    await sequelize.sync();
+    console.log('Database synced');
+  } catch (err) {
+    console.error('Database error:', err);
+  }
+})();
+
+// ======================
+// ROUTES CRUD PRODUCT
+// ======================
+
+// CREATE PRODUCT
 app.post('/products', async (req, res) => {
   try {
     const product = await Product.create(req.body);
     res.status(201).json(product);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// READ ALL
+// READ ALL PRODUCTS ✅ (INI PENTING)
 app.get('/products', async (req, res) => {
-  const products = await Product.findAll();
-  res.json(products);
+  try {
+    const products = await Product.findAll();
+    res.json(products);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// READ BY ID
+// READ PRODUCT BY ID
 app.get('/products/:id', async (req, res) => {
-  const product = await Product.findByPk(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Not found' });
-  res.json(product);
+  try {
+    const product = await Product.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE
+// UPDATE PRODUCT
 app.put('/products/:id', async (req, res) => {
-  const product = await Product.findByPk(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Not found' });
+  try {
+    const product = await Product.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-  await product.update(req.body);
-  res.json(product);
+    await product.update(req.body);
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE
+// DELETE PRODUCT
 app.delete('/products/:id', async (req, res) => {
-  const product = await Product.findByPk(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Not found' });
+  try {
+    const product = await Product.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-  await product.destroy();
-  res.json({ message: 'Deleted' });
+    await product.destroy();
+    res.json({ message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// ======================
 // SERVER
+// ======================
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Product-service running on http://localhost:${PORT}`);
 });

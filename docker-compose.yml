@@ -16,7 +16,7 @@ services:
     restart: always
 
   product-db:
-    image: mysql:latest
+    image: mysql:8.0
     container_name: product-db
     env_file:
       - .env
@@ -29,23 +29,38 @@ services:
       - "3306:3306"
     restart: always
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: product-db
+      MYSQL_ROOT_PASSWORD: ${PRODUCT_DB_PASSWORD}
+    depends_on:
+      - product-db
+    restart: always
+
   cart-service:
     build: ./cart-service
     container_name: cart-service
     ports:
       - "8000:8000"
+    restart: always
 
   review-service:
     build: ./review-services
     container_name: review-service
     ports:
       - "5002:5002"
+    restart: always
 
   user-service:
     build: ./user-service
     container_name: user-service
     ports:
       - "4000:4000"
+    restart: always
 
 volumes:
   product-db-data:
