@@ -1,0 +1,20 @@
+{
+  "name": "cart-service",
+  "version": "1.0.0",
+  "description": "Microservice for shopping cart",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql2": "^3.15.3",
+    "sequelize": "^6.37.7",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql2": "^3.15.3",
+   "sequelize": "^6.37.7"
+  }
+}

@@ -27,6 +27,20 @@ def get_review_by_id(review_id):
         return jsonify({"message": "Review not found"}), 404
     return jsonify(review)
 
+# DELETE /reviews/<review_id> -> hapus review
+@app.route('/reviews/<int:review_id>', methods=['DELETE'])
+def delete_review(review_id):
+    global reviews
+
+    review = next((r for r in reviews if r["id"] == review_id), None)
+    if review is None:
+        return jsonify({"message": "Review not found"}), 404
+
+    reviews = [r for r in reviews if r["id"] != review_id]
+
+    return jsonify({"message": "Review deleted"}), 200
+
+
 # GET /reviews/product/<product_id> -> reviews berdasarkan product_id
 @app.route('/reviews/product/<int:product_id>', methods=['GET'])
 def get_reviews_by_product(product_id):

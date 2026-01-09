@@ -1,33 +1,29 @@
 services:
   product-service:
     build: ./product-service
-    container_name: product-service
-    ports:
+    ports: 
       - "${PRODUCT_SERVICE_PORT}:3000"
     env_file:
       - .env
     environment:
-      DB_HOST: product-db
+      DB_HOST: ${PRODUCT_DB_HOST}
       DB_NAME: ${PRODUCT_DB_NAME}
       DB_USER: ${PRODUCT_DB_USER}
       DB_PASSWORD: ${PRODUCT_DB_PASSWORD}
+    container_name: product-service
+    restart: always
     depends_on:
       - product-db
-    restart: always
-
+  
   product-db:
-    image: mysql:8.0
-    container_name: product-db
+    image: mysql:8.0.36
     env_file:
       - .env
     environment:
-      MYSQL_DATABASE: ${PRODUCT_DB_NAME}
-      MYSQL_ROOT_PASSWORD: ${PRODUCT_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD : ${PRODUCT_DB_PASSWORD}
+      MYSQL_DATABASE : ${PRODUCT_DB_NAME}
     volumes:
       - product-db-data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    restart: always
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -42,11 +38,29 @@ services:
     restart: always
 
   cart-service:
-    build: ./cart-service
-    container_name: cart-service
-    ports:
-      - "8000:8000"
-    restart: always
+   build: ./cart-service
+   container_name: cart-service
+   ports:
+    - "3001:3001"
+   environment:
+    DB_HOST: cart-db
+    DB_NAME: cart_db
+    DB_USER: root
+    DB_PASSWORD: cartpassword
+    PORT: 3001
+   depends_on:
+    - cart-db
+   restart: always
+ 
+  cart-db:
+   image: mysql:8.0.36
+   environment:
+      MYSQL_ROOT_PASSWORD: cartpassword
+      MYSQL_DATABASE: cart_db
+   volumes:
+    - cart-db-data:/var/lib/mysql
+   restart: always
+
 
   
 
@@ -68,8 +82,31 @@ services:
     container_name: user-service
     ports:
       - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_NAME: ${USER_DB_NAME}
+      DB_USER: ${USER_DB_USER}
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+    depends_on:
+      - user-db
     restart: always
 
+  user-db:
+    image: postgres:16
+    container_name: user-db
+    environment:
+      POSTGRES_DB: ${USER_DB_NAME}
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    restart: always
+    
   mongo-db:
     image: mongo:latest
     container_name: mongo-db
@@ -104,3 +141,5 @@ services:
 volumes:
   product-db-data:
   mongo-db-data:
+  user-db-data:
+  cart-db-data:

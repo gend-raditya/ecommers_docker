@@ -1,136 +1,89 @@
 const express = require('express');
-const { DataTypes } = require('sequelize');
-const sequelize = require('./database');
+const cors = require('cors');
+const {DataTypes} = require('sequelize');
+const { sequelize, connectWithRetry } = require('./database');
 
 const app = express();
-const PORT = 3000;
-
-// ======================
-// MIDDLEWARE
-// ======================
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/**
- * ======================
- * MODEL PRODUCT (INLINE)
- * ======================
- */
+// Definisikan model Produk
 const Product = sequelize.define('Product', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false
-  },
-  price: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  stock: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.TEXT
-  }
-}, {
-  tableName: 'products',
-  freezeTableName: true,
-  timestamps: false
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    price: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+    },
+    description: {
+        type: DataTypes.TEXT,
+    },
 });
 
-
-// ======================
-// DATABASE SYNC
-// ======================
+// Sinkronisasi model dengan database
 (async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connected');
-
-    await sequelize.sync();
-    console.log('Database synced');
-  } catch (err) {
-    console.error('Database error:', err);
-  }
+    await connectWithRetry();
+    await sequelize.sync({alter: true});
+    console.log('Database & tables created!');
 })();
 
-// ======================
-// ROUTES CRUD PRODUCT
-// ======================
+// Helper Response
+const success = (res, message, data = null) => 
+    res.status(200).json({ message, data });
 
-// CREATE PRODUCT
-app.post('/products', async (req, res) => {
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json(product);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+const error = (res, status, message ) => 
+    res.status(status).json({ success: false, message });
 
-// READ ALL PRODUCTS ✅ (INI PENTING)
+//Routes
+
 app.get('/products', async (req, res) => {
-  try {
-    const products = await Product.findAll();
-    res.json(products);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const data = await Product.findAll();
+        success(res, 'Products retrieved successfully', data);
+    } catch (err) {
+        error(res, 500, 'Failed to retrieve products');
+    }
 });
 
-// READ PRODUCT BY ID
 app.get('/products/:id', async (req, res) => {
-  try {
     const product = await Product.findByPk(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    if (!product) return error(res, 404, 'Product not found');
+    success(res, 'Product retrieved successfully', product);
 });
 
-// UPDATE PRODUCT
+//tambah produk baru
+app.post('/products', async (req, res) => {
+    const { name, price, description } = req.body;
+
+    if(!name || !price) return error(res, 400, 'Name and Price are required');
+
+    const product = await Product.create({ name, price, description });
+    success(res, 'Product created successfully', product);
+});
+
+//update produk
 app.put('/products/:id', async (req, res) => {
-  try {
     const product = await Product.findByPk(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    if (!product) return error(res, 404, 'Product not found');
 
     await product.update(req.body);
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    success(res, 'Product updated successfully', product);
 });
 
-// DELETE PRODUCT
+//delete produk
 app.delete('/products/:id', async (req, res) => {
-  try {
     const product = await Product.findByPk(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
+    if (!product) return error(res, 404, 'Product not found');
+    
     await product.destroy();
-    res.json({ message: 'Product deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    success(res, 'Product deleted successfully');
 });
 
-// ======================
-// SERVER
-// ======================
+// Menjalankan server pada port 3000
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Product-service running on http://localhost:${PORT}`);
+    console.log(`Product service is running on port ${PORT}`);
 });

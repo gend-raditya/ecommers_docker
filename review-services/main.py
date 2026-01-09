@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from database import reviews_collection
+from fastapi import Body
 from bson import ObjectId
 
 app = FastAPI()
@@ -12,26 +13,19 @@ class Review(BaseModel):
     rating: int = Field(..., ge=1, le=5, example=5)
 
 
-@app.post("/review")
+@app.post("/reviews")
 def create_review(review: Review):
-    try:
-        # Convert Pydantic → dict
-        review_dict = review.model_dump()
+    review_dict = review.model_dump()
+    result = reviews_collection.insert_one(review_dict)
+    review_dict["_id"] = str(result.inserted_id)
 
-        # Insert ke Mongo
-        result = reviews_collection.insert_one(review_dict)
+    return {
+        "success": True,
+        "data": review_dict
+    }
+    
+    
 
-        # FIX UTAMA: ObjectId → string
-        review_dict["_id"] = str(result.inserted_id)
-
-        return {
-            "success": True,
-            "message": "Review created successfully",
-            "data": review_dict
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -52,40 +46,46 @@ def get_reviews():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/reviews/{product_id}")
+@app.get("/reviews/product/{product_id}")
 def get_reviews_by_product(product_id: int):
-    try:
-        reviews = []
-        for r in reviews_collection.find({"product_id": product_id}):
-            r["_id"] = str(r["_id"])  # FIX ObjectId
-            reviews.append(r)
+    reviews = []
+    for r in reviews_collection.find({"product_id": product_id}):
+        r["_id"] = str(r["_id"])
+        reviews.append(r)
 
-        return {
-            "success": True,
-            "data": reviews
-        }
+    return {
+        "success": True,
+        "data": reviews
+    }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
     
     
-@app.delete("/review/{review_id}")
+@app.delete("/reviews/{review_id}")
 def delete_review(review_id: str):
-    try:
-        result = reviews_collection.delete_one(
-            {"_id": ObjectId(review_id)}
-        )
+    result = reviews_collection.delete_one(
+        {"_id": ObjectId(review_id)}
+    )
 
-        if result.deleted_count == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="Review tidak ditemukan"
-            )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Review tidak ditemukan")
 
-        return {
-            "success": True,
-            "message": "Review berhasil dihapus"
-        }
+    return {"success": True}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))    
+
+@app.put("/reviews/{review_id}")
+def update_review(review_id: str, review: Review = Body(...)):
+    review_dict = review.model_dump()
+    
+    result = reviews_collection.update_one(
+        {"_id": ObjectId(review_id)},
+        {"$set": review_dict}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Review tidak ditemukan")
+    
+    review_dict["_id"] = review_id
+    return {
+        "success": True,
+        "data": review_dict
+    }
